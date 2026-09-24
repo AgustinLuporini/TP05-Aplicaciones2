@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unitree Telemetry Dashboard — TP05 (Desarrollo de Aplicaciones II)</title>
+    <meta name="description" content="Dashboard web de telemetría robótica para motores, IMU, BMS y fuerzas de contacto de robots Unitree Go2 y G1.">
+
+    <!-- Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Chart.js CDN (versión 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+
+    <!-- ==========================================================================
+         App Header & Main Toolbar
+         ========================================================================== -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Unitree Telemetry Monitor</h1>
+                    <p>TP05 — Desarrollo de Aplicaciones II (UADE)</p>
+                </div>
+            </div>
+
+            <div class="controls-toolbar">
+                <!-- Status Pill -->
+                <div id="connectionStatusPill" class="status-pill offline">
+                    <span class="dot"></span> CONECTANDO...
+                </div>
+
+                <!-- Toggle Selector de Modo (REST vs WebSocket) -->
+                <div class="button-group" title="Estrategia de Conexión">
+                    <button id="btnModeREST" class="btn-toggle active">
+                        <i class="fa-solid fa-rotate"></i> REST (500ms)
+                    </button>
+                    <button id="btnModeWS" class="btn-toggle">
+                        <i class="fa-solid fa-bolt"></i> WebSocket (10 Hz)
+                    </button>
+                </div>
+
+                <!-- Toggle Selector de Modelo (Go2 vs G1) -->
+                <div class="button-group" title="Modelo de Robot Unitree">
+                    <button id="btnModelGo2" class="btn-toggle active">
+                        <i class="fa-solid fa-dog"></i> Go2 (12 DoF)
+                    </button>
+                    <button id="btnModelG1" class="btn-toggle">
+                        <i class="fa-solid fa-robot"></i> G1 (29 DoF)
+                    </button>
+                </div>
+
+                <!-- Botones de Acción CSV -->
+                <button id="btnCapturarMuestra" class="btn-action">
+                    <i class="fa-solid fa-camera"></i> Capturar Muestra (<span id="nMuestras">0</span>)
+                </button>
+                <button id="btnExportarCSV" class="btn-action btn-primary">
+                    <i class="fa-solid fa-file-csv"></i> Exportar CSV
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================================================
+         Barra de Estadísticas & Latencia (Trade-Off Monitor)
+         ========================================================================== -->
+    <section class="telemetry-stats-bar">
+        <div class="stats-container">
+            <div class="stat-item">
+                <span class="stat-label"><i class="fa-solid fa-network-wired"></i> Modo Activo:</span>
+                <span class="stat-value" id="currentModeLabel">REST Polling (Pull 2 Hz)</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><i class="fa-solid fa-stopwatch"></i> Latencia RTT:</span>
+                <span class="stat-value font-mono" id="statLatency">0 ms</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><i class="fa-solid fa-wave-square"></i> Frecuencia Real:</span>
+                <span class="stat-value font-mono" id="statHzRate">0 Hz</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label"><i class="fa-solid fa-layer-group"></i> Patrones Activos:</span>
+                <span class="stat-value">Adapter | Observer | Facade</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+         Main Dashboard Grid layout
+         ========================================================================== -->
+    <main class="dashboard-grid">
+
+        <!-- 1. PANEL DE MOTORES (Tabla & Semáforo de Temperatura) -->
+        <section class="panel-col-12" id="motor-panel-container">
+            <!-- Inyectado por MotorPanelComponent.js -->
+        </section>
+
+        <!-- 2. PANEL IMU (Roll, Pitch, Yaw & Chart.js con Búfer Circular) -->
+        <section class="panel-col-7" id="imu-panel-container">
+            <!-- Inyectado por IMUPanelComponent.js -->
+        </section>
+
+        <!-- 3. PANEL BMS (Baterías, Celdas & Corriente) -->
+        <section class="panel-col-5" id="bms-panel-container">
+            <!-- Inyectado por BMSPanelComponent.js -->
+        </section>
+
+        <!-- 4. PANEL DE FUERZAS (Contacto 4 Patas) -->
+        <section class="panel-col-12" id="forces-panel-container">
+            <!-- Inyectado por ForcesPanelComponent.js -->
+        </section>
+
+    </main>
+
+    <!-- ==========================================================================
+         Análisis de Trade-Off (REST Polling vs WebSockets)
+         ========================================================================== -->
+    <footer class="tradeoff-banner">
+        <div class="banner-content">
+            <div class="banner-header">
+                <i class="fa-solid fa-flask-vial"></i>
+                <span>Análisis de Trade-Off: REST Polling (500ms) vs WebSocket (10 Hz)</span>
+            </div>
+            <div class="tradeoff-grid">
+                <div class="tradeoff-box rest-box">
+                    <h4><i class="fa-solid fa-rotate"></i> Polling REST tradicional (Pull @ 500ms)</h4>
+                    <ul>
+                        <li><strong>Mecanismo:</strong> Peticiones HTTP GET periódicas enviadas por el cliente usando <code>setInterval</code>.</li>
+                        <li><strong>Ventajas:</strong> Implementación trivial, compatible con proxies y firewalls estándar, sin mantenimiento de conexión persistente.</li>
+                        <li><strong>Desventajas:</strong> Overhead repetido de encabezados HTTP (TCP Handshake / SSL), sobrecarga del servidor con 2 requests/s por cliente, mayor latencia para eventos críticos.</li>
+                    </ul>
+                </div>
+                <div class="tradeoff-box ws-box">
+                    <h4><i class="fa-solid fa-bolt"></i> API WebSocket Nativa (Push @ 10 Hz / 100ms)</h4>
+                    <ul>
+                        <li><strong>Mecanismo:</strong> Conexión bidireccional y persistente sobre TCP a 10 Hz mediante protocolo <code>ws://</code>.</li>
+                        <li><strong>Ventajas:</strong> Streaming en tiempo real real, latencia mínima (~10ms), mínimo overhead por frame (solamente 2-6 bytes de frame WS en lugar de kilobytes HTTP).</li>
+                        <li><strong>Desventajas:</strong> Requiere gestión activa del estado de conexión (reconexiones), consumo continuo de socket en backend.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap ES Module -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
